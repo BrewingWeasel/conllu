@@ -157,7 +157,12 @@ fn do_parse(
         ),
       )
     }
-    [] -> Ok(current_sentences)
+    [] ->
+      case list.is_empty(current_sentence.words) {
+        True -> Ok(current_sentences)
+        False -> Ok([current_sentence, ..current_sentences])
+      }
+      |> result.map(list.reverse)
   }
 }
 
