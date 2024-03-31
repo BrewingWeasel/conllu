@@ -1,135 +1,18 @@
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/int
-import gleam/bool
-
-pub type Sentence {
-  // TODO: add working support for text_lang
-  Sentence(
-    sent_id: Option(String),
-    text: Option(String),
-    /// ex: text_en = ""
-    text_lang: Option(#(String, String)),
-    translit: Option(String),
-    comments: List(String),
-    words: List(Word),
-  )
-}
-
-/// A single word with grammatical information
-pub type Word {
-  Word(
-    index: Int,
-    form: String,
-    lemma: String,
-    upos: UPOS,
-    xpos: Option(String),
-    feats: Option(List(Feature)),
-    head: Option(Int),
-    deprel: Option(String),
-    deps: Option(String),
-    misc: Option(String),
-  )
-}
-
-/// Universal POS tag
-/// based on https://universaldependencies.org/u/pos/index.html
-pub type UPOS {
-  /// adjective
-  ADJ
-  /// adposition
-  ADP
-  /// adverb
-  ADV
-  /// auxiliary
-  AUX
-  /// coordinating conjunction
-  CCONJ
-  /// determiner
-  DET
-  /// interjection
-  INTJ
-  /// noun
-  NOUN
-  /// numeral
-  NUM
-  /// particle
-  PART
-  /// pronoun
-  PRON
-  /// proper noun
-  PROPN
-  /// punctuation
-  PUNCT
-  /// subordinating conjunction
-  SCONJ
-  /// symbol
-  SYM
-  /// verb
-  VERB
-  ///other
-  X
-}
-
-// TODO: enums for every feature
-pub type Feature {
-  PronType(String)
-  Gender(String)
-  VerbForm(String)
-  NumType(String)
-  Animacy(String)
-  Mood(String)
-  Poss(String)
-  NounClass(String)
-  Tense(String)
-  Reflex(String)
-  Number(String)
-  Aspect(String)
-  Foreign(String)
-  Case(String)
-  Voice(String)
-  Abbr(String)
-  Definite(String)
-  Evident(String)
-  Typo(String)
-  Deixis(String)
-  Polarity(String)
-  DeixisRef(String)
-  Person(String)
-  Degree(String)
-  Polite(String)
-  Clusivity(String)
-  Custom(String, String)
-}
-
-pub type ParseError {
-  InvalidData(WordParts)
-  MissingWordInformation(WordParts)
-}
-
-pub type WordParts {
-  Index
-  Form
-  Lemma
-  UPOS
-  XPOS
-  Feats
-  Head
-  Deprel
-  Deps
-  Misc
-}
-
-fn new_sentence() -> Sentence {
-  Sentence(None, None, None, None, [], [])
-}
+import sentence.{type Sentence, Sentence}
+import parse_error.{type ParseError, InvalidData, MissingWordInformation}
+import word.{type Word, Word}
+import word/upos
+import word/feat
 
 pub fn parse(input: String) -> Result(List(Sentence), ParseError) {
   input
   |> string.split("\n")
-  |> do_parse([], new_sentence())
+  |> do_parse([], sentence.new())
 }
 
 fn do_parse(
@@ -154,7 +37,7 @@ fn do_parse(
           ),
           ..current_sentences
         ],
-        new_sentence(),
+        sentence.new(),
       )
     [word, ..rest] -> {
       use new_word <- result.try(parse_word(word))
@@ -203,53 +86,53 @@ fn parse_word(word: String) -> Result(Word, ParseError) {
   use index <- result.try(
     word_parts
     |> list.at(0)
-    |> result.replace_error(MissingWordInformation(Index))
+    |> result.replace_error(MissingWordInformation(parse_error.Index))
     |> result.try(fn(x) {
-      result.replace_error(int.parse(x), InvalidData(Index))
+      result.replace_error(int.parse(x), InvalidData(parse_error.Index))
     }),
   )
 
   use form <- result.try(
     word_parts
     |> list.at(1)
-    |> result.replace_error(MissingWordInformation(Form)),
+    |> result.replace_error(MissingWordInformation(parse_error.Form)),
   )
 
   use lemma <- result.try(
     word_parts
     |> list.at(2)
-    |> result.replace_error(MissingWordInformation(Lemma)),
+    |> result.replace_error(MissingWordInformation(parse_error.Lemma)),
   )
 
   use upos <- result.try(
     word_parts
     |> list.at(3)
-    |> result.replace_error(MissingWordInformation(UPOS))
-    |> result.try(parse_upos),
+    |> result.replace_error(MissingWordInformation(parse_error.UPOS))
+    |> result.try(upos.parse),
   )
 
   use xpos <- result.try(
     word_parts
     |> list.at(4)
-    |> result.replace_error(MissingWordInformation(XPOS)),
+    |> result.replace_error(MissingWordInformation(parse_error.XPOS)),
   )
 
   use feats <- result.try(
     word_parts
     |> list.at(5)
-    |> result.replace_error(MissingWordInformation(Feats))
-    |> result.try(parse_feats),
+    |> result.replace_error(MissingWordInformation(parse_error.Feats))
+    |> result.try(feat.parse_feats),
   )
 
   use head <- result.try(
     word_parts
     |> list.at(6)
-    |> result.replace_error(MissingWordInformation(Head))
+    |> result.replace_error(MissingWordInformation(parse_error.Head))
     |> result.try(fn(x) {
       case x == "_" {
         True -> Ok(None)
         False ->
-          result.replace_error(int.parse(x), InvalidData(Head))
+          result.replace_error(int.parse(x), InvalidData(parse_error.Head))
           |> result.map(Some)
       }
     }),
@@ -258,19 +141,19 @@ fn parse_word(word: String) -> Result(Word, ParseError) {
   use deprel <- result.try(
     word_parts
     |> list.at(7)
-    |> result.replace_error(MissingWordInformation(Deprel)),
+    |> result.replace_error(MissingWordInformation(parse_error.Deprel)),
   )
 
   use deps <- result.try(
     word_parts
     |> list.at(8)
-    |> result.replace_error(MissingWordInformation(Deps)),
+    |> result.replace_error(MissingWordInformation(parse_error.Deps)),
   )
 
   use misc <- result.try(
     word_parts
     |> list.at(9)
-    |> result.replace_error(MissingWordInformation(Misc)),
+    |> result.replace_error(MissingWordInformation(parse_error.Misc)),
   )
 
   Ok(
@@ -299,72 +182,4 @@ fn parse_word(word: String) -> Result(Word, ParseError) {
       },
     ),
   )
-}
-
-fn parse_upos(input: String) -> Result(UPOS, ParseError) {
-  case input {
-    "ADJ" -> Ok(ADJ)
-    "ADP" -> Ok(ADP)
-    "ADV" -> Ok(ADV)
-    "AUX" -> Ok(AUX)
-    "CCONJ" -> Ok(CCONJ)
-    "DET" -> Ok(DET)
-    "INTJ" -> Ok(INTJ)
-    "NOUN" -> Ok(NOUN)
-    "NUM" -> Ok(NUM)
-    "PART" -> Ok(PART)
-    "PRON" -> Ok(PRON)
-    "PROPN" -> Ok(PROPN)
-    "PUNCT" -> Ok(PUNCT)
-    "SCONJ" -> Ok(SCONJ)
-    "SYM" -> Ok(SYM)
-    "VERB" -> Ok(VERB)
-    "X" -> Ok(X)
-    _ -> Error(InvalidData(UPOS))
-  }
-}
-
-fn parse_feats(input: String) -> Result(Option(List(Feature)), ParseError) {
-  use <- bool.guard(when: input == "_", return: Ok(None))
-  input
-  |> string.split("|")
-  |> list.map(parse_feat)
-  |> result.all()
-  |> result.map(Some)
-}
-
-fn parse_feat(input: String) -> Result(Feature, ParseError) {
-  case input {
-    "PronType=" <> val -> Ok(PronType(val))
-    "Gender=" <> val -> Ok(Gender(val))
-    "VerbForm=" <> val -> Ok(VerbForm(val))
-    "NumType=" <> val -> Ok(NumType(val))
-    "Animacy=" <> val -> Ok(Animacy(val))
-    "Mood=" <> val -> Ok(Mood(val))
-    "Poss=" <> val -> Ok(Poss(val))
-    "NounClass=" <> val -> Ok(NounClass(val))
-    "Tense=" <> val -> Ok(Tense(val))
-    "Reflex=" <> val -> Ok(Reflex(val))
-    "Number=" <> val -> Ok(Number(val))
-    "Aspect=" <> val -> Ok(Aspect(val))
-    "Foreign=" <> val -> Ok(Foreign(val))
-    "Case=" <> val -> Ok(Case(val))
-    "Voice=" <> val -> Ok(Voice(val))
-    "Abbr=" <> val -> Ok(Abbr(val))
-    "Definite=" <> val -> Ok(Definite(val))
-    "Evident=" <> val -> Ok(Evident(val))
-    "Typo=" <> val -> Ok(Typo(val))
-    "Deixis=" <> val -> Ok(Deixis(val))
-    "Polarity=" <> val -> Ok(Polarity(val))
-    "DeixisRef=" <> val -> Ok(DeixisRef(val))
-    "Person=" <> val -> Ok(Person(val))
-    "Degree=" <> val -> Ok(Degree(val))
-    "Polite=" <> val -> Ok(Polite(val))
-    "Clusivity=" <> val -> Ok(Clusivity(val))
-    other ->
-      case string.split_once(other, "=") {
-        Ok(#(first, second)) -> Ok(Custom(first, second))
-        Error(Nil) -> Error(InvalidData(Feats))
-      }
-  }
 }
