@@ -1,6 +1,7 @@
 import gleeunit
 import gleeunit/should
 import conllu
+import word/upos
 import gleam/list
 
 pub fn main() {
@@ -44,5 +45,5 @@ pub fn get_first_word_test() {
   |> should.equal("aš")
 
   first_word.upos
-  |> should.equal(conllu.PRON)
+  |> should.equal(upos.PRON)
 }
