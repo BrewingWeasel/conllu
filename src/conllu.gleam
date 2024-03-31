@@ -167,6 +167,7 @@ fn do_parse(
 }
 
 fn update_sentence_with_comment(sentence: Sentence, comment: String) {
+  let comment = string.trim_left(comment)
   let total_comments = [comment, ..sentence.comments]
   case comment {
     "sent_id = " <> sent_id ->
