@@ -145,7 +145,17 @@ fn do_parse(
         update_sentence_with_comment(current_sentence, comment),
       )
     ["", ..rest] ->
-      do_parse(rest, [current_sentence, ..current_sentences], new_sentence())
+      do_parse(
+        rest,
+        [
+          Sentence(
+            ..current_sentence,
+            words: list.reverse(current_sentence.words),
+          ),
+          ..current_sentences
+        ],
+        new_sentence(),
+      )
     [word, ..rest] -> {
       use new_word <- result.try(parse_word(word))
       do_parse(
@@ -160,7 +170,14 @@ fn do_parse(
     [] ->
       case list.is_empty(current_sentence.words) {
         True -> Ok(current_sentences)
-        False -> Ok([current_sentence, ..current_sentences])
+        False ->
+          Ok([
+            Sentence(
+              ..current_sentence,
+              words: list.reverse(current_sentence.words),
+            ),
+            ..current_sentences
+          ])
       }
       |> result.map(list.reverse)
   }
